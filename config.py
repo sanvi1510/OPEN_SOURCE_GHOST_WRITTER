@@ -27,10 +27,6 @@ class Settings(BaseSettings):
     )
 
     # ── LLM ─────────────────────────────────────────────────────────────
-    openai_api_key: str = Field(
-        default="",
-        description="OpenAI API key. Provide this OR another LLM key.",
-    )
     anthropic_api_key: str = Field(
         default="",
         description="Anthropic API key. Provide this OR another LLM key.",
@@ -43,9 +39,21 @@ class Settings(BaseSettings):
         default="",
         description="Groq API key for fast LLM inference.",
     )
-    llm_model: str = Field(
-        default="gpt-4o",
-        description="Model identifier passed to the LLM provider.",
+    analyzer_provider: str = Field(
+        default="groq",
+        description="LLM provider for the Analyzer node (e.g. groq, google, anthropic)."
+    )
+    analyzer_model: str = Field(
+        default="llama-3.1-8b-instant",
+        description="Fast, cheap model for analyzing diffs."
+    )
+    writer_provider: str = Field(
+        default="groq",
+        description="LLM provider for the Writer node."
+    )
+    writer_model: str = Field(
+        default="llama-3.3-70b-versatile",
+        description="Advanced reasoning model for writing documentation."
     )
 
     # ── Paths & Sandbox ─────────────────────────────────────────────────
@@ -76,9 +84,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _require_at_least_one_llm_key(self) -> "Settings":
         """Ensure at least one LLM API key is configured."""
-        if not self.openai_api_key and not self.anthropic_api_key and not self.google_api_key and not self.groq_api_key:
+        if not self.anthropic_api_key and not self.google_api_key and not self.groq_api_key:
             raise ValueError(
-                "At least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY must be set."
+                "At least one of ANTHROPIC_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY must be set."
             )
         return self
 
@@ -119,12 +127,15 @@ def configure_logging() -> None:
 
     logger = logging.getLogger(__name__)
     logger.info(
-        "Configuration loaded  model=%s  clone_dir=%s  max_retries=%d  "
-        "openai_key=%s  anthropic_key=%s  google_key=%s  groq_key=%s",
-        settings.llm_model,
+        "Configuration loaded  analyzer_provider=%s  analyzer_model=%s  "
+        "writer_provider=%s  writer_model=%s  clone_dir=%s  max_retries=%d  "
+        "anthropic_key=%s  google_key=%s  groq_key=%s",
+        settings.analyzer_provider,
+        settings.analyzer_model,
+        settings.writer_provider,
+        settings.writer_model,
         settings.clone_dir,
         settings.max_retries,
-        _mask(settings.openai_api_key) if settings.openai_api_key else "(not set)",
         _mask(settings.anthropic_api_key) if settings.anthropic_api_key else "(not set)",
         _mask(settings.google_api_key) if settings.google_api_key else "(not set)",
         _mask(settings.groq_api_key) if settings.groq_api_key else "(not set)",

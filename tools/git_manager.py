@@ -113,7 +113,7 @@ def clone_repo(clone_url: str, branch: str = "main") -> str:
         GitCommandError: If the git operation fails.
     """
     repo_name = _sanitize_repo_name(clone_url)
-    dest: str = os.path.join(settings.clone_dir, repo_name)
+    dest: str = os.path.abspath(os.path.join(settings.clone_dir, repo_name))
     auth_url = _authenticated_url(clone_url)
     env = _git_env()
 
