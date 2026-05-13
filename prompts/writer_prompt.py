@@ -10,6 +10,22 @@ When the README is empty or missing, a separate ``WRITER_INITIAL_README_PROMPT``
 is used to generate a comprehensive README from scratch using the full repo context.
 """
 
+WRITER_README_TEMPLATE: str = (
+    "Use the following README section structure for all generated output:\n"
+    "# <Project Title>\n"
+    "## Description\n"
+    "## Key Features\n"
+    "## Architecture / Workflow\n"
+    "## Installation\n"
+    "## Configuration\n"
+    "## Usage\n"
+    "## API Reference\n"
+    "## Examples\n"
+    "## Testing\n"
+    "## License\n"
+    "If a section does not apply, omit it. Add the Examples section only when there are real screenshots, CLI examples, or UI examples to show.\n"
+)
+
 WRITER_SYSTEM_PROMPT: str = (
     "You are an expert technical writer.\n"
     "Your task is to update project documentation so it accurately reflects\n"
@@ -21,9 +37,12 @@ WRITER_SYSTEM_PROMPT: str = (
     "- Do NOT invent APIs, functions, or behaviours that do not exist.\n"
     "- Keep prose concise and developer-friendly.\n"
     "- Return the FULL, COMPLETE updated README content.\n"
-    "- Ensure the README contains these core sections: Title, Description, Architecture/Workflow (explaining how the program runs), Installation, and Usage.\n"
+    "- Ensure the README contains these core sections: Title, Description, Architecture/Workflow, Installation, Usage, Configuration, Testing, and License.\n"
+    "- If the current README already has these sections, preserve the unmodified sections exactly.\n"
+    "- Use the exact headings given in the README template when possible.\n"
     "- Do NOT output just a diff, and do NOT omit unmodified sections.\n"
-    "- Do NOT wrap the output in markdown code fences."
+    "- Do NOT wrap the output in markdown code fences.\n"
+    f"{WRITER_README_TEMPLATE}"
 )
 
 WRITER_USER_PROMPT: str = (
@@ -56,7 +75,7 @@ WRITER_INITIAL_SYSTEM_PROMPT: str = (
     "Your task is to generate a comprehensive README.md for a project from scratch.\n\n"
     "Rules:\n"
     "- Write a complete, professional README with proper Markdown formatting.\n"
-    "- Include these sections: project title, description, architecture & workflow (explaining the step-by-step logic and commands to run), installation, usage examples, API reference (if applicable), and license placeholder.\n"
+    "- Use the following README section structure: project title, description, key features, architecture & workflow, installation, configuration, usage examples, API reference (if applicable), screenshots, testing, and license placeholder.\n"
     "- Code examples MUST be self-contained and runnable.\n"
     "  Define functions inline in the example rather than importing from project modules.\n"
     "  For instance, instead of `from calculator import add`, write:\n"
@@ -68,7 +87,8 @@ WRITER_INITIAL_SYSTEM_PROMPT: str = (
     "- Do NOT invent features that don't exist in the source code.\n"
     "- Keep prose concise and developer-friendly.\n"
     "- Do NOT wrap the output in markdown code fences.\n"
-    "- Return ONLY the README content."
+    "- Return ONLY the README content.\n"
+    f"{WRITER_README_TEMPLATE}"
 )
 
 WRITER_INITIAL_USER_PROMPT: str = (
