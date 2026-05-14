@@ -29,7 +29,7 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
-from agent.nodes import analyzer_node, writer_node, tester_node
+from agent.nodes import analyzer_node, writer_node, tester_node, retriever_node
 from agent.state import GhostwriterState
 from config import settings
 from tools.git_manager import (
@@ -81,11 +81,13 @@ def _build_workflow() -> Any:
 
     # Register nodes
     graph.add_node("analyzer", analyzer_node)
+    graph.add_node("retriever", retriever_node)
     graph.add_node("writer", writer_node)
     graph.add_node("tester", tester_node)
 
-    # Linear edges
-    graph.add_edge("analyzer", "writer")
+    # Linear edges: analyzer → retriever → writer → tester
+    graph.add_edge("analyzer", "retriever")
+    graph.add_edge("retriever", "writer")
     graph.add_edge("writer", "tester")
 
     # Conditional edge from tester
@@ -196,6 +198,7 @@ def _run_workflow_inner(
         "error_message": "",
         "retry_count": 0,
         "repo_summary": repo_summary,
+        "retrieved_context": "",
     }
 
     final_state: dict[str, Any] = _compiled_workflow.invoke(initial_state)

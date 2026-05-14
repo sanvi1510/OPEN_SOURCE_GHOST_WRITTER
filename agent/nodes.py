@@ -38,6 +38,7 @@ from prompts.writer_prompt import (
 )
 from tools.code_extractor import extract_python_blocks
 from tools.docker_executor import run_code_in_sandbox
+from tools.rag_retriever import retrieve_context
 
 logger = logging.getLogger(__name__)
 
@@ -47,48 +48,39 @@ _LLM_MAX_RETRIES = 3
 _LLM_BACKOFF_BASE = 2  # seconds
 
 
-def _get_llm() -> BaseChatModel:
-    """Instantiate the correct LLM client based on available API keys.
+def _build_llm(provider: str, model: str) -> BaseChatModel:
+    """Instantiate the correct LLM client based on the requested provider."""
+    provider = provider.lower().strip()
 
-    Priority: OpenAI → Groq → Google Gemini → Anthropic.
-    """
-    if settings.openai_api_key:
-        from langchain_openai import ChatOpenAI
-
-        return ChatOpenAI(
-            model=settings.llm_model,
-            api_key=settings.openai_api_key,
-            temperature=0.2,
-            request_timeout=settings.llm_request_timeout,
-        )
-
-    if settings.groq_api_key:
+    if provider == "groq" and settings.groq_api_key:
         from langchain_groq import ChatGroq
 
         return ChatGroq(
-            model=settings.llm_model,
+            model=model,
             api_key=settings.groq_api_key,
             temperature=0.2,
         )
 
-    if settings.google_api_key:
+    if provider == "google" and settings.google_api_key:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         return ChatGoogleGenerativeAI(
-            model=settings.llm_model,
+            model=model,
             google_api_key=settings.google_api_key,
             temperature=0.2,
         )
 
-    # Anthropic fallback
-    from langchain_anthropic import ChatAnthropic
+    if provider == "anthropic" and settings.anthropic_api_key:
+        from langchain_anthropic import ChatAnthropic
 
-    return ChatAnthropic(
-        model=settings.llm_model,
-        api_key=settings.anthropic_api_key,
-        temperature=0.2,
-        timeout=float(settings.llm_request_timeout),
-    )
+        return ChatAnthropic(
+            model=model,
+            api_key=settings.anthropic_api_key,
+            temperature=0.2,
+            timeout=float(settings.llm_request_timeout),
+        )
+
+    raise ValueError(f"Provider '{provider}' not supported or missing API key in .env")
 
 
 def _invoke_llm_with_retry(
@@ -143,7 +135,7 @@ def analyzer_node(state: GhostwriterState) -> dict[str, Any]:
     """
     logger.info("Analyzer: examining diff (%d chars)", len(state["diff"]))
 
-    llm = _get_llm()
+    llm = _build_llm(settings.analyzer_provider, settings.analyzer_model)
     messages = [
         SystemMessage(content=ANALYZER_SYSTEM_PROMPT),
         HumanMessage(content=ANALYZER_USER_PROMPT.format(diff=state["diff"])),
@@ -174,6 +166,30 @@ def analyzer_node(state: GhostwriterState) -> dict[str, Any]:
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# Node 1.5 – RAG Retriever
+# ────────────────────────────────────────────────────────────────────────────
+
+def retriever_node(state: GhostwriterState) -> dict[str, Any]:
+    """Retrieve relevant source code chunks from the repository using RAG.
+
+    Reads ``state["diff"]`` and ``state["analysis"]``, queries a FAISS index
+    built from the changed files, and writes ``state["retrieved_context"]``.
+    """
+    logger.info("Retriever: building RAG context from changed files.")
+    try:
+        context = retrieve_context(
+            repo_path=state["repo_path"],
+            diff=state["diff"],
+            analysis=state.get("analysis", ""),
+        )
+        logger.info("Retriever: context ready (%d chars).", len(context))
+        return {"retrieved_context": context}
+    except Exception as exc:
+        logger.warning("Retriever: RAG failed – proceeding without context. Error: %s", exc)
+        return {"retrieved_context": ""}
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # Node 2 – Writer
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -197,7 +213,7 @@ def writer_node(state: GhostwriterState) -> dict[str, Any]:
     else:
         logger.info("Writer: generating updated README (attempt %d)", retry + 1)
 
-    llm = _get_llm()
+    llm = _build_llm(settings.writer_provider, settings.writer_model)
 
     if is_initial_generation:
         # ── Initial generation: use repo context ────────────────────────
@@ -221,6 +237,7 @@ def writer_node(state: GhostwriterState) -> dict[str, Any]:
         user_prompt = WRITER_USER_PROMPT.format(
             analysis=state["analysis"],
             readme=readme_content,
+            retrieved_context=state.get("retrieved_context", "") or "(no source context available)",
         )
         system_prompt = WRITER_SYSTEM_PROMPT
 

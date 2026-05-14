@@ -36,3 +36,4 @@ class GhostwriterState(TypedDict, total=False):
     error_message: str
     retry_count: int
     repo_summary: str
+    retrieved_context: str  # RAG: relevant source code chunks injected into the Writer prompt
