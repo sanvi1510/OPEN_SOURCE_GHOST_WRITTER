@@ -18,9 +18,12 @@ To install Open-Source Ghostwriter, follow these steps:
 ## Usage Examples
 Here's an example of how to use Open-Source Ghostwriter:
 ```python
+# Example usage of a simple Python function
 def add(a, b):
     return a + b
-print(add(2, 3))  # Output: 5
+
+result = add(2, 3)
+print(result)  # Output: 5
 ```
 To trigger the Ghostwriter workflow, send a POST request to the `/webhook` endpoint with a valid GitHub webhook payload.
 
