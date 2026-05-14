@@ -27,7 +27,7 @@ ANALYZER_SYSTEM_PROMPT: str = (
     "Rules:\n"
    
     "- Ignore formatting-only or whitespace changes.\n"
-    "- Be precise about old vs. new signatures.\n"
+    "- Be precise about old vs. new signatures in the repo.\n"
     "- Return valid JSON only — no markdown fences, no commentary."
 )
 
