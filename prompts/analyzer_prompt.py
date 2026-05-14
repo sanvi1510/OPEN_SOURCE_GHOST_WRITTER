@@ -25,7 +25,7 @@ ANALYZER_SYSTEM_PROMPT: str = (
     '  "summary": "<overall summary of the diff>"\n'
     "}\n\n"
     "Rules:\n"
-    "- Only include changes that are relevant to public-facing documentation.\n"
+    
     "- Ignore formatting-only or whitespace changes.\n"
     "- Be precise about old vs. new signatures.\n"
     "- Return valid JSON only — no markdown fences, no commentary."
