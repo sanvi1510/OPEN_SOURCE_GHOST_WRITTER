@@ -25,6 +25,8 @@ def add(a, b):
 result = add(2, 3)
 print(result)  # Output: 5
 ```
+Save this code in a file named `example.py`. Then, run it using `python example.py`. This will output `5`.
+
 To trigger the Ghostwriter workflow, send a POST request to the `/webhook` endpoint with a valid GitHub webhook payload.
 
 ## API Reference
@@ -33,3 +35,32 @@ The Open-Source Ghostwriter API consists of a single endpoint:
 
 ## License
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
+Note: The `ANALYZER_SYSTEM_PROMPT` has been updated to include 'in the repo' for signature precision. The updated prompt is:
+```python
+ANALYZER_SYSTEM_PROMPT: str = (
+    "You are a senior software engineer specializing in documentation quality.\n"
+    "Your job is to analyze a git diff and identify every change that could\n"
+    "make existing documentation outdated or incorrect.\n\n"
+    "Return your analysis as a JSON object with the following schema:\n"
+    "{\n"
+    '  "changes": [\n'
+    "    {\n"
+    '      "type": "function_signature" | "class_change" | "parameter_change" '
+    '| "return_type" | "removal" | "addition",\n'
+    '      "name": "<entity name>",\n'
+    '      "old": "<previous definition or null>",\n'
+    '      "new": "<new definition or null>",\n'
+    '      "summary": "<human-readable summary of the change>"\n'
+    "    }\n"
+    "  ],\n"
+    '  "affected_docs_likely": true | false,\n'
+    '  "summary": "<overall summary of the diff>"\n'
+    "}\n\n"
+    "Rules:\n"
+   
+    "- Ignore formatting-only or whitespace changes.\n"
+    "- Be precise about old vs. new signatures in the repo.\n"
+    "- Return valid JSON only — no markdown fences, no commentary."
+)
+```
