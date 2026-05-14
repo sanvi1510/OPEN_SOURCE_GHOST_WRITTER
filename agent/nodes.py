@@ -36,7 +36,7 @@ from prompts.writer_prompt import (
     WRITER_SYSTEM_PROMPT,
     WRITER_USER_PROMPT,
 )
-from tools.code_extractor import extract_python_blocks
+from tools.code_extractor import extract_code_blocks
 from tools.docker_executor import run_code_in_sandbox
 from tools.rag_retriever import retrieve_context
 
@@ -270,7 +270,7 @@ def writer_node(state: GhostwriterState) -> dict[str, Any]:
 # ────────────────────────────────────────────────────────────────────────────
 
 def tester_node(state: GhostwriterState) -> dict[str, Any]:
-    """Extract Python code blocks and run each in the sandbox.
+    """Extract language-tagged code blocks and run each in the sandbox.
 
     Populates ``code_blocks``, ``test_results``, and ``error_message``.
     """
@@ -279,11 +279,11 @@ def tester_node(state: GhostwriterState) -> dict[str, Any]:
         logger.warning("Tester: no updated README to test.")
         return {"error_message": "No updated README available for testing."}
 
-    blocks: list[str] = extract_python_blocks(updated_readme)
-    logger.info("Tester: found %d Python code block(s).", len(blocks))
+    blocks = extract_code_blocks(updated_readme)
+    logger.info("Tester: found %d code block(s).", len(blocks))
 
     if not blocks:
-        logger.info("Tester: no Python blocks to test – passing.")
+        logger.info("Tester: no code blocks to test – passing.")
         return {
             "code_blocks": [],
             "test_results": [],
@@ -293,10 +293,22 @@ def tester_node(state: GhostwriterState) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     errors: list[str] = []
 
-    for idx, code in enumerate(blocks):
-        logger.info("Tester: running block %d/%d …", idx + 1, len(blocks))
-        result: SandboxResult = run_code_in_sandbox(code, repo_path=state.get("repo_path", ""))
+    for idx, block in enumerate(blocks):
+        language = block["language"]
+        code = block["code"]
+        logger.info(
+            "Tester: running block %d/%d (language=%s) …",
+            idx + 1,
+            len(blocks),
+            language,
+        )
+        result: SandboxResult = run_code_in_sandbox(
+            code,
+            language=language,
+            repo_path=state.get("repo_path", ""),
+        )
         results.append({
+            "language": language,
             "stdout": result.stdout,
             "stderr": result.stderr,
             "exit_code": result.exit_code,
@@ -304,7 +316,7 @@ def tester_node(state: GhostwriterState) -> dict[str, Any]:
 
         if not result.success:
             block_error = (
-                f"Block {idx + 1} failed (exit_code={result.exit_code}):\n"
+                f"Block {idx + 1} failed (language={language}, exit_code={result.exit_code}):\n"
                 f"stderr: {result.stderr}\n"
                 f"code:\n{code}"
             )

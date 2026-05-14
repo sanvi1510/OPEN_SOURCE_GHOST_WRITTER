@@ -62,7 +62,7 @@ class Settings(BaseSettings):
         description="Local directory used for cloning repositories.",
     )
     docker_image: str = Field(
-        default="ghostwriter-sandbox",
+        default="python:3.11-slim",
         description="Docker image name for the code-execution sandbox.",
     )
 
