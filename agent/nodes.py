@@ -48,18 +48,20 @@ _LLM_MAX_RETRIES = 3
 _LLM_BACKOFF_BASE = 2  # seconds
 
 
-def _build_llm(provider: str, model: str) -> BaseChatModel:
+def _build_llm(provider: str, model: str, specific_key: str = "") -> BaseChatModel:
     """Instantiate the correct LLM client based on the requested provider."""
     provider = provider.lower().strip()
 
-    if provider == "groq" and settings.groq_api_key:
-        from langchain_groq import ChatGroq
+    if provider == "groq":
+        key = specific_key or settings.groq_api_key
+        if key:
+            from langchain_groq import ChatGroq
 
-        return ChatGroq(
-            model=model,
-            api_key=settings.groq_api_key,
-            temperature=0.2,
-        )
+            return ChatGroq(
+                model=model,
+                api_key=key,
+                temperature=0.2,
+            )
 
     if provider == "google" and settings.google_api_key:
         from langchain_google_genai import ChatGoogleGenerativeAI
@@ -135,7 +137,11 @@ def analyzer_node(state: GhostwriterState) -> dict[str, Any]:
     """
     logger.info("Analyzer: examining diff (%d chars)", len(state["diff"]))
 
-    llm = _build_llm(settings.analyzer_provider, settings.analyzer_model)
+    llm = _build_llm(
+        settings.analyzer_provider,
+        settings.analyzer_model,
+        settings.analyzer_groq_api_key,
+    )
     messages = [
         SystemMessage(content=ANALYZER_SYSTEM_PROMPT),
         HumanMessage(content=ANALYZER_USER_PROMPT.format(diff=state["diff"])),
@@ -213,7 +219,11 @@ def writer_node(state: GhostwriterState) -> dict[str, Any]:
     else:
         logger.info("Writer: generating updated README (attempt %d)", retry + 1)
 
-    llm = _build_llm(settings.writer_provider, settings.writer_model)
+    llm = _build_llm(
+        settings.writer_provider,
+        settings.writer_model,
+        settings.writer_groq_api_key,
+    )
 
     if is_initial_generation:
         # ── Initial generation: use repo context ────────────────────────

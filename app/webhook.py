@@ -98,9 +98,15 @@ async def github_webhook(
     all other events are acknowledged but ignored.
     """
     body: bytes = await request.body()
+    logger.info("Webhook received: event=%s delivery=%s", x_github_event, x_github_delivery)
 
     # 1. Validate the HMAC signature
-    verify_signature(body, x_hub_signature_256)
+    try:
+        verify_signature(body, x_hub_signature_256)
+        logger.info("Signature verified successfully.")
+    except HTTPException as exc:
+        logger.error("Signature verification failed: %s", exc.detail)
+        raise
 
     # 2. De-duplicate deliveries
     if _is_duplicate_delivery(x_github_delivery):
@@ -109,6 +115,7 @@ async def github_webhook(
 
     # 3. Only handle pull-request events
     if x_github_event != "pull_request":
+        logger.info("Ignoring non-pull_request event: %s", x_github_event)
         return {"status": "ignored", "reason": "not a pull_request event"}
 
     # 4. Parse payload into a typed model (safe against missing keys)
@@ -119,6 +126,7 @@ async def github_webhook(
         raise HTTPException(status_code=400, detail="Malformed payload.") from exc
 
     if not payload.is_merged_pr:
+        logger.info("PR not merged – ignoring.")
         return {"status": "ignored", "reason": "PR not merged"}
 
     # 5. Trigger workflow

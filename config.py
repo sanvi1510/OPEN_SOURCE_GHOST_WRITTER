@@ -39,6 +39,14 @@ class Settings(BaseSettings):
         default="",
         description="Groq API key for fast LLM inference.",
     )
+    analyzer_groq_api_key: str = Field(
+        default="",
+        description="Specific Groq API key for the Analyzer node (optional).",
+    )
+    writer_groq_api_key: str = Field(
+        default="",
+        description="Specific Groq API key for the Writer node (optional).",
+    )
     analyzer_provider: str = Field(
         default="groq",
         description="LLM provider for the Analyzer node (e.g. groq, google, anthropic)."
@@ -84,9 +92,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _require_at_least_one_llm_key(self) -> "Settings":
         """Ensure at least one LLM API key is configured."""
-        if not self.anthropic_api_key and not self.google_api_key and not self.groq_api_key:
+        if not self.anthropic_api_key and not self.google_api_key and not self.groq_api_key \
+                and not self.analyzer_groq_api_key and not self.writer_groq_api_key:
             raise ValueError(
-                "At least one of ANTHROPIC_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY must be set."
+                "At least one of ANTHROPIC_API_KEY, GOOGLE_API_KEY, GROQ_API_KEY, "
+                "ANALYZER_GROQ_API_KEY, or WRITER_GROQ_API_KEY must be set."
             )
         return self
 
